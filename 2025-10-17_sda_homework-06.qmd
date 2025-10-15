@@ -3,6 +3,7 @@ title: "Homework-06: Regional Count Data Homework (Spatial Autocorrelation)"
 author: "E. Duke Chase"
 date: today
 ---
+
 ```{r}
 #| label: setup
 #| include: false
@@ -32,19 +33,16 @@ Lawson, A., Biggeri, A., Böhning, D., Lesaffre, E., Viel, J. F., & Bertollini, 
 We run the following command to load `lip_sf` (assuming the `.rda` is in your search path).
 
 ```{r}
-load("lip_sf.rda")
+#| label: load-data
+
+load(here("data", "lip_sf.rda"))
 ```
 
 We run the following commands to geometrically obtain centroids for each county and create a neighborhood object for the data.
 
 ```{r}
-#| include: false
-library(sf)
-library(smerc)
-library(spdep)
-```
+#| label: obtain-centroids
 
-```{r}
 coords <- st_coordinates(st_centroid(st_geometry(lip_sf)))
 lip_nb <- poly2nb(lip_sf, queen=TRUE)
 ```
@@ -55,11 +53,47 @@ Plot the neighborhood connections stored in `lip_nb`. What do you observe?
 
 **Solution**
 
+```{r}
+#| label: p_1
+
+plot(st_geometry(lip_sf))
+plot(lip_nb, coords, add = TRUE, col = "blue", pch = 19, cex = 0.6)
+```
+
+
 # Problem 2
 
 Use the Moran’s I statistic to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the constant risk hypothesis. Use a row standardized weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sp` for the expected counts. Provide the observed test statistic, the p-value, and interpret your results in the context of the problem.
 
 **Solution**
+
+```{r}
+#| label: p_2
+
+#w_w <- nb2mat(lip_nb, style = "W")
+lw_w <- nb2listw(lip_nb, style = "W")
+
+N <- length(lip_sf$cancer)
+y <- lip_sf$cancer
+n <- lip_sf$population
+rni <- lip_sf$expected
+
+nsim <- 499
+t0_w <- moran(y, listw = lw_w, n = N, S0 = Szero(lw_w))$I
+tsim_w <- numeric(nsim)
+
+for (i in 1:nsim){
+  tsim_w[i] <- moran(rpois(N, rni), listw = lw_w, n = N, S0 = Szero(lw_w))$I
+}
+
+pval_2 <- (sum(tsim_w >= t0_w) + 1) / (nsim + 1)
+```
+
+::: {.answer-box}
+  The observed test statistic is $t_{obs} =$ `r round(t0_w, 4)`, and the p-value is `r pval_2`.
+:::
+
+
 
 # Problem 3
 
@@ -67,9 +101,30 @@ Use the constant risk version of Moran’s I (Walter 1992) to test whether there
 
 **Solution**
 
+```{r}
+#| label: p_3
+
+#w_b <- nb2mat(lip_nb, style = "B")
+lw_b <- nb2listw(lip_nb, style = "B")
+
+nsim <- 499
+t0_b <- moran(y, listw = lw_b, n = N, S0 = Szero(lw_b))$I
+tsim_b <- numeric(nsim)
+
+for (i in 1:nsim){
+  tsim_b[i] <- moran(rpois(N, rni), listw = lw_b, n = N, S0 = Szero(lw_b))$I
+}
+
+pval_3 <- (sum(tsim_b >= t0_b) + 1) / (nsim + 1)
+```
+
+::: {.answer-box}
+  The observed test statistic is $t_{obs} =$ `r round(t0_b, 4)`, and the p-value is `r pval_3`.
+:::
+
 # Problem 4
 
-The intercentroid distances for the North Carolina data are between 4866.044 and 396,350.916. In the context of Tango’s recommended weights matrix, a very weak spatial correlation $\kappa=5000$ and a very strong spatial correlation has $\kappa=200000$. Perform Monte Carlo tests using using Tango's index with Tango's recommended weights with both $\kappa=5000$ and $\kappa=200000$ for the `cancer` variable with 499 simulated data sets. Interpret your results in the context of the problem.
+The intercentroid distances for the North Carolina <span style="color:blue;">(Scotland?)</span> data are between 4866.044 and 396,350.916. In the context of Tango’s recommended weights matrix, a very weak spatial correlation $\kappa=5000$ and a very strong spatial correlation has $\kappa=200000$. Perform Monte Carlo tests using using Tango's index with Tango's recommended weights with both $\kappa=5000$ and $\kappa=200000$ for the `cancer` variable with 499 simulated data sets. Interpret your results in the context of the problem.
 
 **Solution**
 
@@ -86,7 +141,9 @@ In this problem you are going to implement a portion of the spatial scan method.
 Suppose you have regional count data with the following characteristics:
 
 ```{r}
+#| label: p_6-setup
 #| include: false
+
 region_id <- seq_len(4)
 x <- c(1, 3, 2, 0)
 y <- c(2, 1, 1.5, 2)

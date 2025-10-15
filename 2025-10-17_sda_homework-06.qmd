@@ -1,0 +1,145 @@
+---
+title: "Homework-06: Regional Count Data Homework (Spatial Autocorrelation)"
+author: "E. Duke Chase"
+date: today
+---
+```{r}
+#| label: setup
+#| include: false
+
+library(here)
+source(here::here("R", "setup.R"))
+
+# Set key directory paths
+data_dir <- here::here("data")
+output_dir <- here::here("output")
+```
+
+The `lip_sf` is an `sf` data frame with 53 rows representing counties and 5 variables. The data frame contains 53 county-level observations for lip cancer among males in Scotland between 1975-1980. The variables are:
+
+-   `name`: county name
+-   `cancer`: number of Lip cancer cases in the county (Cressie 1993)
+-   `population`: county population size (Cressie 1993)
+-   `expected`: expected number of lip cancer cases (Lawson 1999)
+-   `geometry`: geometric representation of counties in Scotland.
+
+Source Kemp I., Boyle P., Smans M. and Muir C. (1985) Atlas of cancer in Scotland, 1975-1980, incidence and epidemiologic perspective. *International Agency for Research on Cancer*. 72
+
+Cressie, N. A. C. (1993). Statistics for Spatial Data. New York: John Wiley & Sons, p. 537 Table 7.2.
+
+Lawson, A., Biggeri, A., Böhning, D., Lesaffre, E., Viel, J. F., & Bertollini, R. (Eds.). (1999). Disease Mapping and Risk Assessment for Public Health. New York: Wiley, pp. 68-69, Table 5.1.
+
+We run the following command to load `lip_sf` (assuming the `.rda` is in your search path).
+
+```{r}
+load("lip_sf.rda")
+```
+
+We run the following commands to geometrically obtain centroids for each county and create a neighborhood object for the data.
+
+```{r}
+#| include: false
+library(sf)
+library(smerc)
+library(spdep)
+```
+
+```{r}
+coords <- st_coordinates(st_centroid(st_geometry(lip_sf)))
+lip_nb <- poly2nb(lip_sf, queen=TRUE)
+```
+
+# Problem 1
+
+Plot the neighborhood connections stored in `lip_nb`. What do you observe?
+
+**Solution**
+
+# Problem 2
+
+Use the Moran’s I statistic to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the constant risk hypothesis. Use a row standardized weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sp` for the expected counts. Provide the observed test statistic, the p-value, and interpret your results in the context of the problem.
+
+**Solution**
+
+# Problem 3
+
+Use the constant risk version of Moran’s I (Walter 1992) to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the CRH. Use a row binary weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sp` for the expected counts. Interpret your results in the context of the problem.
+
+**Solution**
+
+# Problem 4
+
+The intercentroid distances for the North Carolina data are between 4866.044 and 396,350.916. In the context of Tango’s recommended weights matrix, a very weak spatial correlation $\kappa=5000$ and a very strong spatial correlation has $\kappa=200000$. Perform Monte Carlo tests using using Tango's index with Tango's recommended weights with both $\kappa=5000$ and $\kappa=200000$ for the `cancer` variable with 499 simulated data sets. Interpret your results in the context of the problem.
+
+**Solution**
+
+# Problem 5
+
+Compare the goodness-of-fit and spatial autocorrelation components of Tango’s statistic for the observed and simulated data in a plot. (Do this for both values of $\kappa$). Are the patterns similar for the weak versus strong spatial autocorrelation? Or does the value of $\kappa$ dramatically impact the relative importance of the goodness-of-fit and spatial autocorrelation components?
+
+**Solution**
+
+# Problem 6
+
+In this problem you are going to implement a portion of the spatial scan method. You can only use functions/packages loaded with by default by R (`stats`, `graphics`, `grDevices`, `utils`, `datasets`, `methods`, `base`). If you don't have to load a package to access the functionality, then you should be okay.
+
+Suppose you have regional count data with the following characteristics:
+
+```{r}
+#| include: false
+region_id <- seq_len(4)
+x <- c(1, 3, 2, 0)
+y <- c(2, 1, 1.5, 2)
+cases <- c(1, 3, 3, 4)
+pop <- c(2, 4, 6, 4)
+dtf <- data.frame(region_id, x, y, cases, population = pop)
+```
+
+```{r}
+#| echo: false
+knitr::kable(dtf)
+```
+
+(`x`, `y`) define the centroid of each region.
+
+Calculate the Poisson spatial scan statistic under the CRH assuming the constraint that no more than half the total population can be in a potential cluster/window.
+
+Break up your solution into parts:
+
+## (a)
+
+Compute the inter-centroid distance matrix between all centroids.
+
+Return the sample mean of this matrix.
+
+**Solution**
+
+## (b)
+
+Using the distance matrix above, determine all possible windows (in terms of the region ids each window includes) in terms of nearest neighbors (the largest would have 3 non-inclusive neighbors). Print the complete list of windows.
+
+**Solution**
+
+## (c)
+
+Determine the population size of each window to identify which windows have less than 50% of the total population. Print the population of each window
+
+**Solution**
+
+## (d)
+
+Only retain the windows that satisfy the population constraint. Print the list of retained windows.
+
+**Solution**
+
+## (e)
+
+For each remaining window, compute $Y_{in}$, $Y_{out}$, $E_{in}$, $E_{out}$. Print a data frame/matrix with the columns $Y_{in}$, $Y_{out}$, $E_{in}$, $E_{out}$.
+
+**Solution**
+
+## (f)
+
+Compute the statistic $\left(\frac{Y_{in}}{E_{in}}\right)^{Y_{in}} \left(\frac{Y_{out}}{E_{out}}\right)^{Y_{out}} I\left(\frac{Y_{in}}{E_{in}} \geq \frac{Y_{out}}{E_{out}}\right)$ for each remaining window.
+
+**Solution**

@@ -128,11 +128,57 @@ The intercentroid distances for the North Carolina <span style="color:blue;">(Sc
 
 **Solution**
 
+```{r}
+#| label: p_4
+
+# Exponential decay weight matrix w/ two kappa values
+w_5 <- dweights(coords, kappa = 5000)
+w_200 <- dweights(coords, kappa = 200000)
+
+# Calculate Tango's statistic
+t_5 <- tango.test(cases = y, pop = n, w_5)
+t_200 <- tango.test(cases = y, pop = n, w_200)
+
+# Compare monte carlo p-value to chi-square approximation p-value
+(tango_mc5 <- tango.test(cases = y, pop = n, w_5, nsim = 499))
+(tango_mc200 <- tango.test(cases = y, pop = n, w_200, nsim = 499))
+```
+
+
 # Problem 5
 
 Compare the goodness-of-fit and spatial autocorrelation components of Tango’s statistic for the observed and simulated data in a plot. (Do this for both values of $\kappa$). Are the patterns similar for the weak versus strong spatial autocorrelation? Or does the value of $\kappa$ dramatically impact the relative importance of the goodness-of-fit and spatial autocorrelation components?
 
 **Solution**
+
+```{r}
+#| label: p_5 
+#| layout-ncol: 2
+#| layout-align: center
+#| fig-asp: 1
+#| fig-column: page
+
+plot(tango_mc5,
+     main = expression(paste(kappa, " = 5,000")),
+     xlab = "spatial autocorrelation",
+     ylab = "goodness-of-fit",
+     cex.main = 2.5,
+     cex.lab = 2,
+     cex.axis = 1.3,
+     obs.list = list(pch = 19, col = "purple"),
+     sim.list = list(pch = 20, col = "darkgray"))
+
+plot(tango_mc200,
+     main = expression(paste(kappa, " = 200,000")),
+     xlab = "spatial autocorrelation",
+     ylab = "goodness-of-fit",
+     cex.main = 2.5,
+     cex.lab = 2,
+     cex.axis = 1.3,
+     obs.list = list(pch = 19, col = "purple"),
+     sim.list = list(pch = 20, col = "darkgray"))
+```
+
 
 # Problem 6
 

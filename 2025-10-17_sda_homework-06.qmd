@@ -63,14 +63,13 @@ plot(lip_nb, coords, add = TRUE, col = "blue", pch = 19, cex = 0.6)
 
 # Problem 2
 
-Use the Moran’s I statistic to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the constant risk hypothesis. Use a row standardized weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sp` for the expected counts. Provide the observed test statistic, the p-value, and interpret your results in the context of the problem.
+Use the Moran’s I statistic to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the constant risk hypothesis. Use a row standardized weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sf` for the expected counts. Provide the observed test statistic, the p-value, and interpret your results in the context of the problem.
 
 **Solution**
 
 ```{r}
 #| label: p_2
 
-#w_w <- nb2mat(lip_nb, style = "W")
 lw_w <- nb2listw(lip_nb, style = "W")
 
 N <- length(lip_sf$cancer)
@@ -97,14 +96,13 @@ pval_2 <- (sum(tsim_w >= t0_w) + 1) / (nsim + 1)
 
 # Problem 3
 
-Use the constant risk version of Moran’s I (Walter 1992) to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the CRH. Use a row binary weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sp` for the expected counts. Interpret your results in the context of the problem.
+Use the constant risk version of Moran’s I (Walter 1992) to test whether there is evidence of positive spatial autocorrelation for the `cancer` variable under the CRH. Use a row binary weights matrix for the `lip_nb` neighbor relationship. Use the `expected` counts stored in `lip_sf` for the expected counts. Interpret your results in the context of the problem.
 
 **Solution**
 
 ```{r}
 #| label: p_3
 
-#w_b <- nb2mat(lip_nb, style = "B")
 lw_b <- nb2listw(lip_nb, style = "B")
 
 nsim <- 499
@@ -217,11 +215,62 @@ Return the sample mean of this matrix.
 
 **Solution**
 
+```{r}
+#| label: p_6-a
+
+ss_coords <- as.matrix(dtf[, c("x", "y")])
+d_mat <- dist(ss_coords)
+```
+
+::: {.answer-box}
+  The sample mean of the inter-centroid distance matrix is `r round(mean(d_mat), 3)`.
+:::
+
+
 ## (b)
 
 Using the distance matrix above, determine all possible windows (in terms of the region ids each window includes) in terms of nearest neighbors (the largest would have 3 non-inclusive neighbors). Print the complete list of windows.
 
 **Solution**
+
+```{r}
+#| label: p_6-b
+
+dist_mat <- as.matrix(d_mat)
+n_reg <- nrow(dtf)
+
+# Create empty list to store all windows
+window_list <- list()
+
+for (i in 1:n_reg) {
+  # Get dist from region i
+  dist_from_i <- dist_mat[i, ]
+  
+  # Get indices of regions in order of distance from region i
+  ordered_indices <- order(dist_from_i)
+  
+  # Loop through and create all windows starting with region i
+  for (j in 1:n_reg) {
+    window_list <- append(window_list, list(ordered_indices[1:j]))
+  }
+}
+
+# Create a data frame to reference for later problems
+sss_df <- data.frame(
+  window_ids = I(window_list)
+)
+
+sss_df$window <- unlist(lapply(sss_df$window_ids, function(w) {
+  paste(w, collapse = ", ")
+}))
+
+knitr::kable(
+  sss_df["window"], 
+  caption = "All Nearest-Neighbor Windows",
+  col.names = "Window (Regions)"
+)
+```
+
 
 ## (c)
 
@@ -229,11 +278,51 @@ Determine the population size of each window to identify which windows have less
 
 **Solution**
 
+```{r}
+#| label: p_6-c
+
+# Calculate total population
+tot_pop <- sum(dtf$population)
+
+# Add pop in each window to data frame
+sss_df$win_pop <- unlist(lapply(sss_df$window_ids, function(w) {
+  sum(dtf$population[w])
+}))
+
+# Add a formatted population string column
+sss_df$win_pop_str <- sprintf("%d (%.1f%%)",
+                              sss_df$win_pop,
+                              (sss_df$win_pop / tot_pop) * 100
+                              )
+
+# Print table with pop data
+knitr::kable(
+  sss_df[, c("window", "win_pop_str")], 
+  caption = "Population of All Windows",
+  col.names = c("Window (Regions)", "Window Population (% Total)")
+)
+```
+
 ## (d)
 
 Only retain the windows that satisfy the population constraint. Print the list of retained windows.
 
 **Solution**
+
+```{r}
+#| label: p_6-d
+
+# Filter out windows that surpass the population threshold
+pop_thresh = 0.5 * tot_pop
+valid_windows_df <- sss_df[sss_df$win_pop <= pop_thresh, ]
+
+# Print table only containing valid windows
+knitr::kable(
+  valid_windows_df[, c("window", "win_pop_str")],
+  caption = "Valid Windows With 50% Population Constraint",
+  col.names = c("Valid Windows (Regions)", "Window Pop (% Total)")
+)
+```
 
 ## (e)
 
@@ -241,8 +330,57 @@ For each remaining window, compute $Y_{in}$, $Y_{out}$, $E_{in}$, $E_{out}$. Pri
 
 **Solution**
 
+```{r}
+#| label: p_6-e
+
+# Get total number of cases
+tot_cases <- sum(dtf$cases)
+
+# Add the four new columns
+valid_windows_df$y_in <- unlist(lapply(valid_windows_df$window_ids, function(w) {
+  sum(dtf$cases[w])
+}))
+valid_windows_df$y_out <- tot_cases - valid_windows_df$y_in
+valid_windows_df$e_in <- tot_cases * (valid_windows_df$win_pop / tot_pop)
+valid_windows_df$e_out <- tot_cases - valid_windows_df$e_in
+
+# Print the table with this new data
+knitr::kable(
+  valid_windows_df[, c("window", "y_in", "y_out", "e_in", "e_out")],
+  caption = "Statistics for Valid Windows",
+  col.names = c("window", "Y<sub>in</sub>", "Y<sub>out</sub>", "E<sub>in</sub>", "E<sub>out</sub>"),
+  digits = c(NA, 0, 0, 2, 2)
+)
+```
+
 ## (f)
 
 Compute the statistic $\left(\frac{Y_{in}}{E_{in}}\right)^{Y_{in}} \left(\frac{Y_{out}}{E_{out}}\right)^{Y_{out}} I\left(\frac{Y_{in}}{E_{in}} \geq \frac{Y_{out}}{E_{out}}\right)$ for each remaining window.
 
 **Solution**
+
+```{r}
+#| label: p_6-f
+
+# Compute the ratios
+ratio_in <- valid_windows_df$y_in / valid_windows_df$e_in
+ratio_out <- valid_windows_df$y_out / valid_windows_df$e_out
+
+# Compute the indicator function
+indicator <- (ratio_in >= ratio_out)
+
+# Calculate the exponent parts
+ratio_in_exp <- ratio_in ^ valid_windows_df$y_in
+ratio_out_exp <- ratio_out ^ valid_windows_df$y_out
+
+# Calculate the test statistics
+valid_windows_df$test_stat <- ratio_in_exp * ratio_out_exp * indicator
+
+# Print the table
+knitr::kable(
+  valid_windows_df[, c("window", "test_stat")],
+  caption = "Test Stat for Valid Windows",
+  col.names = c("Window", "Test Statistic"),
+  digits = c(NA, 4)
+)
+```

@@ -55,10 +55,17 @@ Plot the neighborhood connections stored in `lip_nb`. What do you observe?
 
 ```{r}
 #| label: p_1
+#| fig-width: 8
+#| fig-asp: 1
+#| fig-cap: "Connections of Scottish Counties"
 
 plot(st_geometry(lip_sf))
 plot(lip_nb, coords, add = TRUE, col = "blue", pch = 19, cex = 0.6)
 ```
+
+::: {.answer-box}
+  This map of Scotland is basically just showing the number of neighboring counties for each county. Smaller southern counties tend to have a greater number of neighbors because they're packed tightly, whereas for northern counties there tend to be fewer neighbors due to the constraints of size and the surrounding ocean limiting the possible number of neighbors for each county.
+:::
 
 
 # Problem 2
@@ -90,6 +97,8 @@ pval_2 <- (sum(tsim_w >= t0_w) + 1) / (nsim + 1)
 
 ::: {.answer-box}
   The observed test statistic is $t_{obs} =$ `r round(t0_w, 4)`, and the p-value is `r pval_2`.
+  
+  The positive $t_{\text{obs}}$ value and significant p-value indicate that there is clustering of lip cancer cases in Scotland compared to what would be expected based on CRH, i.e., there is significant evidence that the cases aren't just randomly distributed, but that there is strong spatial autocorrelation with counties that have higher than expected lip cancer rates tending to be bunched together, although this test doesn't indicate where.
 :::
 
 
@@ -118,6 +127,8 @@ pval_3 <- (sum(tsim_b >= t0_b) + 1) / (nsim + 1)
 
 ::: {.answer-box}
   The observed test statistic is $t_{obs} =$ `r round(t0_b, 4)`, and the p-value is `r pval_3`.
+  
+  As with problem 2, the positive $t_{\text{obs}}$ value and very significant p-value indicate the present of spatial autocorrelation where Scottish counties that have more lip cancer cases than expected under CRH tend to be close together. Using the binary row weights matrix instead of the row standardized weights matrix as in problem 2 did result in $t_{\text{obs}}$ being notably less positive than in problem 2. The binary row weights matrix weights counties with more neighbors more heavily than counties with fewer neighbors (unlike the row standardized weights matrix), so this would maybe indicate that the more southern Scottish counties that tend to have more neighbors might also have lower rates of lip cancer (which is consistent with past work we've done on this data set).
 :::
 
 # Problem 4
@@ -138,9 +149,30 @@ t_5 <- tango.test(cases = y, pop = n, w_5)
 t_200 <- tango.test(cases = y, pop = n, w_200)
 
 # Compare monte carlo p-value to chi-square approximation p-value
-(tango_mc5 <- tango.test(cases = y, pop = n, w_5, nsim = 499))
-(tango_mc200 <- tango.test(cases = y, pop = n, w_200, nsim = 499))
+tango_mc5 <- tango.test(cases = y, pop = n, w_5, nsim = 499)
+tango_mc200 <- tango.test(cases = y, pop = n, w_200, nsim = 499)
+
+# Create data frame of results
+results_df <- data.frame(
+  Kappa = c("5,000 (Weak)", "200,000 (Strong)"),
+  Index = c(tango_mc5$tstat, tango_mc200$tstat),
+  GOF = c(tango_mc5$gof, tango_mc200$gof),
+  SA = c(tango_mc5$sa, tango_mc200$sa),
+  p_value = c(tango_mc5$pvalue.sim, tango_mc200$pvalue.sim)
+)
+
+# Print results
+knitr::kable(
+  results_df,
+  caption = "Tango's Index Results for Weak vs. Strong Spatial Correlation",
+  col.names = c("Kappa (k)", "Tango's Index", "Goodness-of-Fit", "Spatial Autocorrelation", "MC p-value"),
+  digits = c(NA, 3, 3, 4, 3) # Specify rounding for each column
+)
 ```
+
+::: {.answer-box}
+  Both tests had significant p-values, so there is evidence that the spatial pattern of lip cancer cases in Scotland exhibits significant clustering and is not consistent with CRH. The $\kappa = 5,000$ parameter shows that there is significant clustering of lip cancer on small scales, only looking at very close neighbors, and the $\kappa = 200,000$ parameter being significant shows that there is significant clustering of lip cancer on large scales too. The goodness-of-fit is identical in both cases, which it should be, since changes in $\kappa$ shouldn't affect that. The spatial autocorrelation is very different between the tests, with it being more than 20 times higher for the larger $\kappa$ value, which indicates that the pattern is more likely to be a broad one than super localized.
+:::
 
 
 # Problem 5
@@ -176,6 +208,10 @@ plot(tango_mc200,
      obs.list = list(pch = 19, col = "purple"),
      sim.list = list(pch = 20, col = "darkgray"))
 ```
+
+::: {.answer-box}
+  As noted before, the goodness-of-fit is approximately the same for both $\kappa$ values, but the spatial autocorrelation is very different depending on the value of $\kappa$. For $\kappa = 5,000$, the observed data, while extreme compared to the CRH compliant simulated data, is much closer to the simulated data than it is with $\kappa = 200,000$ when looking at spatial autocorrelation. This indicates that while it is extreme, and indicative of clustering, with the very weak spatial correlation, goodness-of-fit is a much stronger contributor to what is differentiation the observed data from the simulated data than it is for very strong spatial correlation. This points to the clustering of lip cancer cases in Scotland being a more regional phenomenon.
+:::
 
 
 # Problem 6
